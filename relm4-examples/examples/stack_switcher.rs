@@ -122,9 +122,8 @@ impl Widgets<AppModel, ()> for AppWidgets {
     }
 
     fn post_connect_components() {
-        let header_widgets = components.header.widgets();
+        let header_widgets = components.header.widgets().unwrap();
         header_widgets
-            .unwrap()
             .switcher
             .set_stack(Some(components.stack.root_widget()));
     }
