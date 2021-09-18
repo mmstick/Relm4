@@ -17,6 +17,25 @@ pub struct GridPosition {
     pub height: i32,
 }
 
+#[derive(Debug)]
+/// Position or rather information for a stack page
+/// inside a factory.
+pub struct StackPageInfo {
+    /// The name of the [`gtk::StackPage`].
+    pub name: Option<String>,
+    /// The title of the [`gtk::StackPage`].
+    pub title: Option<String>,
+}
+
+#[derive(Debug)]
+/// Position used for [`gtk::Fixed`].
+pub struct FixedPosition {
+    /// Position on the x-axis.
+    pub x: f64,
+    /// Position on the y-axis.
+    pub y: f64,
+}
+
 impl<Widget> FactoryView<Widget> for gtk::Box
 where
     Widget: glib::IsA<gtk::Widget>,
@@ -112,10 +131,22 @@ where
     }
 }
 
-#[derive(Debug)]
-pub struct FixedPosition {
-    pub x: f64,
-    pub y: f64,
+impl<Widget> FactoryView<Widget> for gtk::Stack
+where
+    Widget: glib::IsA<gtk::Widget>,
+{
+    type Position = StackPageInfo;
+    fn add(&self, widget: &Widget, position: &StackPageInfo) {
+        if let Some(title) = &position.title {
+            self.add_titled(widget, position.name.as_deref(), title);
+        } else {
+            self.add_named(widget, position.name.as_deref());
+        }
+    }
+
+    fn remove(&self, widget: &Widget) {
+        self.remove(widget);
+    }
 }
 
 impl<Widget> FactoryView<Widget> for gtk::Fixed

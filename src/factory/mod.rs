@@ -7,7 +7,7 @@ pub mod collections;
 mod widgets;
 
 pub use collections::*;
-pub use widgets::GridPosition;
+pub use widgets::{GridPosition, FixedPosition, StackPageInfo};
 
 /// Define behavior to create, update and remove widgets according to
 /// data stored in a factory.
