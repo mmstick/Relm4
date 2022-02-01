@@ -4,10 +4,15 @@
 
 use super::super::*;
 use super::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 impl<C: StatefulComponent> Bridge<C, C::Root> {
     /// Starts the component, passing ownership to a future attached to a GLib context.
-    pub fn launch_stateful(self, payload: C::Payload) -> Fairing<C::Root, C::Input, C::Output> {
+    pub fn launch_stateful(
+        self,
+        payload: C::Payload,
+    ) -> Fairing<C, C::Root, C::Widgets, C::Input, C::Output> {
         let Bridge { root, .. } = self;
 
         // Used for all events to be processed by this component's internal service.
@@ -20,14 +25,17 @@ impl<C: StatefulComponent> Bridge<C, C::Root> {
         let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel::<C::CommandOutput>();
 
         // Constructs the initial model and view with the initial payload.
-        let Fuselage {
-            mut model,
-            mut widgets,
-        } = C::dock(payload, &root, &mut input_tx, &mut output_tx);
+        let fuselage = Rc::new(RefCell::new(C::dock(
+            payload,
+            &root,
+            &mut input_tx,
+            &mut output_tx,
+        )));
 
         // The main service receives `Self::Input` and `Self::CommandOutput` messages and applies
         // them to the model and view.
         let mut input_tx_ = input_tx.clone();
+        let fuselage_ = fuselage.clone();
         let id = crate::spawn_local(async move {
             loop {
                 let input_future = input_rx.recv();
@@ -40,8 +48,13 @@ impl<C: StatefulComponent> Bridge<C, C::Root> {
                     // Performs the model update, checking if the update requested a command.
                     // Runs that command asynchronously in the background using tokio.
                     Either::Left((Some(message), _)) => {
+                        let &mut Fuselage {
+                            ref mut model,
+                            ref mut widgets,
+                        } = &mut *fuselage_.borrow_mut();
+
                         if let Some(command) =
-                            model.update(&mut widgets, message, &mut input_tx_, &mut output_tx)
+                            model.update(widgets, message, &mut input_tx_, &mut output_tx)
                         {
                             let cmd_tx = cmd_tx.clone();
                             crate::spawn(async move {
@@ -54,7 +67,12 @@ impl<C: StatefulComponent> Bridge<C, C::Root> {
 
                     // Responds to outputs received by commands.
                     Either::Right((Some(message), _)) => {
-                        model.update_cmd(&mut widgets, message, &mut input_tx_, &mut output_tx);
+                        let &mut Fuselage {
+                            ref mut model,
+                            ref mut widgets,
+                        } = &mut *fuselage_.borrow_mut();
+
+                        model.update_cmd(widgets, message, &mut input_tx_, &mut output_tx);
                     }
 
                     _ => (),
@@ -67,6 +85,7 @@ impl<C: StatefulComponent> Bridge<C, C::Root> {
 
         // Give back a type for controlling the component service.
         Fairing {
+            state: fuselage,
             widget: root,
             sender: input_tx,
             receiver: output_rx,
