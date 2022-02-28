@@ -58,6 +58,12 @@ where
     }
 }
 
+impl<C: Component> AsRef<C::Root> for ComponentBuilder<C> {
+    fn as_ref(&self) -> &C::Root {
+        self.widget()
+    }
+}
+
 impl<C: Component> ComponentBuilder<C> {
     /// Starts the component, passing ownership to a future attached to a GLib context.
     pub fn launch(self, payload: C::InitParams) -> Connector<C> {
