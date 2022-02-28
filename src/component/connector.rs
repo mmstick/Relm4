@@ -103,3 +103,9 @@ impl<C: Component> ComponentController<C> for Connector<C> {
         &self.widget
     }
 }
+
+impl<C: Component> AsRef<C::Root> for Connector<C> {
+    fn as_ref(&self) -> &C::Root {
+        self.widget()
+    }
+}
