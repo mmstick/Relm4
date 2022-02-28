@@ -48,3 +48,9 @@ impl<C: Component> ComponentController<C> for Controller<C> {
         &self.widget
     }
 }
+
+impl<C: Component> AsRef<C::Root> for Controller<C> {
+    fn as_ref(&self) -> &C::Root {
+        self.widget()
+    }
+}
